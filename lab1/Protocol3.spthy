@@ -49,11 +49,10 @@ rule AliceSendsKey:
 */
 rule BobReceivesKey:
     let Na = adec(Na_aenc, ~skb)
-        kAB = f(Na, ~Nb)
     in
     [Fr(~Nb), In(Na_aenc), !Ltk($B, ~skb), !Pk($A, pkA)]
     --[BobReceivesKey($B, $A, ~skb, pkA, ~Nb, Na)]->
-    [Out(aenc(<~Nb, kAB>, pkA)), BobReceived($B, $A, ~Nb, Na)]
+    [Out(aenc(<~Nb, f(Na, ~Nb)>, pkA)), BobReceived($B, $A, ~Nb, Na)]
 
 /* The following rule should be annotated by the following action facts: 
 - AliceReceivesNb($A, $B, ~skA, ~Na, Nb, ~ma, Kab)

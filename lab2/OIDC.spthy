@@ -112,7 +112,7 @@ rule RP_Receives_Credentials:
     [In(<'username', ~username, 'password', password_maybe>), !PasswordLookUp($RP, ~username, ~password), RP_1($RP, $User)]
     --[Eq(password_maybe, ~password), RP_Receives_Credentials($RP, $User, ~username, ~password),
          RP_accepts_credentials($RP, ~username), RP_Logs_User_in_Direct($RP, $User, ~username)]->
-    [/*TODO: something here?*/]
+    []
 
 //If the user wants to log-in through an IdP, it indicates this to the RP
 /* This rule should be annotated by the following action facts: 
@@ -135,14 +135,14 @@ rule AuthRequest_RP:
     Fr(~nonce), RP_1($RP, $User)
     ]
     --[AuthRequest_RP($RP, $User, $IdP, ~nonce)]->
-    [Out(<$RP, 'authRequest', ~nonce>), RP_2_OIDC($RP, $User, $IdP, ~nonce)]
+    [Out(<'authRequest', ~nonce>), RP_2_OIDC($RP, $User, $IdP, ~nonce)]
 
 //...which is forwarded by the user to the IdP it had indicated
 /* The following rule should be annotated by the following action facts: 
 - AuthRequest_User($User, $RP, $IdP, ~username, ~password, nonce)
 */
 rule AuthRequest_User:
-    [In(<$RP, 'authRequest', nonce>), User_2_OIDC($User, $RP, $IdP, ~username, ~password)]
+    [In(<'authRequest', nonce>), User_2_OIDC($User, $RP, $IdP, ~username, ~password)]
     --[AuthRequest_User($User, $RP, $IdP, ~username, ~password, nonce)]->
     [Out_S($User, $IdP, <'authRequest', $RP, nonce>), User_3_OIDC($User, $RP, $IdP, ~username, ~password, nonce)]
 
@@ -185,7 +185,7 @@ rule Authentication_Response_IdP:
 rule Authentication_Response_User:
     [In_S($IdP, $User, <token, signedtoken>), User_4_OIDC($User, $RP, $IdP, ~username, ~password, nonce)]
     --[Authentication_Response_User($User, $RP, $IdP, ~username, ~password, nonce, token, signedtoken)]->
-    [Out(<$User, token, signedtoken>)]
+    [Out(<token, signedtoken>)]
 
 
 //The RP gets the  ID Token and validates it, logging the user in.
@@ -195,7 +195,7 @@ rule Authentication_Response_User:
 rule RP_gets_IDToken:
     let token = <'idToken', <'iss', $IdP>, <'sub', username>, <'aud', $RP>, <'nonce', nonce_rcv>>
     in
-    [In(<$User, token, signedtoken>), !Pk($IdP, pkIdP), RP_2_OIDC($RP, $User, $IdP, ~nonce)]
+    [In(<token, signedtoken>), !Pk($IdP, pkIdP), RP_2_OIDC($RP, $User, $IdP, ~nonce)]
     --[Eq(~nonce, nonce_rcv), RP_gets_IDToken($RP, $User, $IdP, ~nonce, username, token, signedtoken, pkIdP),
          Eq(verify(signedtoken,token,pkIdP),true), RP_Logs_User_in_OIDC($RP, $User, username, $IdP),
          RP_gets_IDToken_for_user($RP, $User, token, $IdP), RP_gets_IDToken_for_username($RP, username, $IdP)]->
@@ -306,7 +306,7 @@ lemma User_Logged_In_OIDC:
 // 5. If a RP receives valid credentials (i.e. username and password pair) for user $User, it cannot validate the same credentials 
 //from different User $User2.
 lemma Unique_Credentials:
-        "All RP U uname pass #i #j. RP_Receives_Credentials(RP, U, uname, pass)@i & Username_belongs_to(uname, U, RP)@j & #j < #i ==>
+        "All RP U uname #i #j. RP_accepts_credentials(RP, uname)@i & Username_belongs_to(uname, U, RP)@j & #j < #i ==>
         not Ex U2 #k. RP_Logs_User_in_Direct(RP, U2, uname)@k & not U = U2"
 
 // 6. If a RP receives a valid ID Token from a non-compromised IdP $IdP for user $User, it cannot validate the same ID Token
